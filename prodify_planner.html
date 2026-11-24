@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Productivity Planner</title>
+  <meta name="description" content="Planner produktivitas otomatis dengan hitung mundur dan pengingat tenggat.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=DM+Sans:wght@400;500;700&display=swap">
+
+  <style>
+    /* =========================================================
+       1. DESIGN TOKENS
+       ========================================================= */
+    :root {
+      --bg: #f3f5ff;
+      --surface: #ffffff;
+      --surface2: #e6eaff;
+      --fg: #1b2147;
+      --muted: #5b6286;
+      --line: #d5dbf5;
+
+      --accent: #3d5afe;
+      --on-accent: #ffffff;
+      --accent-text: #2943d6;
+
+      --lime: #ffc2dd;
+      --on-lime: #3a0f26;
+
+      --hot: #c81e4d;
+      --on-hot: #ffffff;
+      --mid: #a86a00;
+      --low: #2f6fd0;
+
+      --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+      --body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+      color-scheme: light;
+    }
+
+    /* Tema gelap: mengikuti sistem, kecuali pengguna memilih tema terang */
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #12142b;
+        --surface: #1b1f3d;
+        --surface2: #252a4d;
+        --fg: #eef0ff;
+        --muted: #9aa2cf;
+        --line: #2f3562;
+        --accent: #8da2ff;
+        --on-accent: #0f1433;
+        --accent-text: #9db0ff;
+        --lime: #ff9fcb;
+        --on-lime: #3a0f26;
+        --hot: #ff7b9c;
+        --on-hot: #2a0a14;
+        --mid: #f0c24b;
+        --low: #8da2ff;
+        color-scheme: dark;
+      }
+    }
+
+    /* Tema gelap: dipilih manual lewat tombol */
+    :root[data-theme="dark"] {
+      --bg: #12142b;
+      --surface: #1b1f3d;
+      --surface2: #252a4d;
+      --fg: #eef0ff;
+      --muted: #9aa2cf;
+      --line: #2f3562;
+      --accent: #8da2ff;
+      --on-accent: #0f1433;
+      --accent-text: #9db0ff;
+      --lime: #ff9fcb;
+      --on-lime: #3a0f26;
+      --hot: #ff7b9c;
+      --on-hot: #2a0a14;
+      --mid: #f0c24b;
+      --low: #8da2ff;
+      color-scheme: dark;
+    }
+
+    /* =========================================================
+       2. BASE
+       ========================================================= */
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--body);
+      font-size: 15px;
+      line-height: 1.55;
+      padding-inline: max(16px, env(safe-area-inset-left, 0px));
+    }
+
+    .wrap { max-width: 1080px; margin: 0 auto; }
+
+    h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
+    button, input, select { font: inherit; color: inherit; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+    /* =========================================================
+       3. HEADER
+       ========================================================= */
+    .hero { max-width: 1080px; margin: 0 auto; padding-top: 20px; padding-bottom: 8px; }
+
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: -.01em;
+    }
+    .logo {
+      width: 30px; height: 30px; border-radius: 9px;
+      background: var(--fg); color: var(--bg);
+      display: grid; place-items: center;
+    }
+    .logo svg { width: 18px; height: 18px; }
+
+    .tag {
+      font-family: var(--body); font-weight: 500; font-size: 12px; color: var(--muted);
+      border: 1px solid var(--line); padding: 2px 10px; border-radius: 999px; letter-spacing: .02em;
+    }
+    .theme {
+      margin-left: auto; cursor: pointer;
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 700;
+    }
+    .theme:hover { border-color: var(--fg); }
+
+    .hero h1 {
+      font-size: clamp(34px, 6.4vw, 64px); line-height: 1.02; font-weight: 800;
+      letter-spacing: -.025em; margin: 34px 0 12px; max-width: 16ch;
+    }
+    .hero h1 em {
+      font-style: normal; background: var(--lime); color: var(--on-lime);
+      padding: 0 .12em; border-radius: .14em;
+      box-decoration-break: clone; -webkit-box-decoration-break: clone;
+    }
+    .hero p { max-width: 52ch; margin: 0; color: var(--muted); font-size: 16.5px; }
+
+    /* =========================================================
+       4. KARTU TENGGAT BERIKUTNYA
+       ========================================================= */
+    .strip {
+      margin-top: 26px; padding: 18px 22px; border-radius: 16px;
+      display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between;
+      background: var(--lime); color: var(--on-lime); font-weight: 700;
+    }
+    .strip.late { background: var(--hot); color: var(--on-hot); }
+    .strip .lbl { font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
+    .strip .big {
+      font-family: var(--display); font-weight: 800; font-size: clamp(17px, 3vw, 24px);
+      min-width: 0; overflow-wrap: anywhere; line-height: 1.2;
+    }
+    .strip .cd {
+      font-family: var(--display); font-weight: 800; font-size: clamp(24px, 5vw, 40px);
+      letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+    }
+
+    /* =========================================================
+       5. LAYOUT UTAMA & PANEL
+       ========================================================= */
+    .grid {
+      display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+      gap: 28px; margin-top: 24px; align-items: start;
+    }
+    @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+    .stack { display: flex; flex-direction: column; gap: 20px; }
+
+    .panel {
+      background: var(--surface); border: 1px solid var(--line);
+      padding: 22px; border-radius: 16px;
+    }
+    .panel h2 { font-size: 17px; margin-bottom: 16px; font-weight: 800; letter-spacing: -.01em; }
+    .panel .hint { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+
+    label { display: block; font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 14px 0 6px; }
+    .panel label:first-of-type { margin-top: 0; }
+
+    input[type=text], input[type=search], input[type=datetime-local], select {
+      width: 100%; background: var(--bg); border: 1px solid var(--line);
+      padding: 10px 12px; border-radius: 10px;
+    }
+    input:focus, select:focus { border-color: var(--fg); }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .btn {
+      cursor: pointer; border: 0; width: 100%; margin-top: 18px;
+      background: var(--accent); color: var(--on-accent);
+      font-weight: 700; font-size: 15px; padding: 13px 16px; border-radius: 12px;
+    }
+    .btn:hover { opacity: .88; }
+
+    .ghost {
+      cursor: pointer; background: transparent; border: 1px solid var(--line);
+      padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 700;
+    }
+    .ghost:hover { border-color: var(--fg); }
+    .ghost.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+    .ghost.full { width: 100%; margin-top: 12px; }
+
+    /* =========================================================
+       6. PROGRES
+       ========================================================= */
+    .stats { display: flex; gap: 22px; align-items: center; }
+
+    .ring { flex: none; width: 108px; height: 108px; position: relative; }
+    .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .ring .t { fill: none; stroke: var(--surface2); stroke-width: 11; }
+    .ring .p { fill: none; stroke: var(--accent); stroke-width: 11; stroke-linecap: round; transition: stroke-dashoffset .6s; }
+    .ring b {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      font-family: var(--display); font-weight: 800; font-size: 22px;
+    }
+
+    .nums { display: grid; gap: 6px; font-size: 14px; min-width: 0; flex: 1; }
+    .nums div { display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+    .nums strong { font-variant-numeric: tabular-nums; }
+    .nums .late strong { color: var(--hot); }
+
+    /* =========================================================
+       7. KALENDER 7 HARI
+       ========================================================= */
+    .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-bottom: 20px; }
+
+    .day {
+      cursor: pointer; border: 1px solid var(--line); background: var(--surface);
+      padding: 9px 2px; text-align: center; border-radius: 12px;
+      display: flex; flex-direction: column; gap: 2px; align-items: center;
+    }
+    .day small { font-size: 11px; text-transform: capitalize; color: var(--muted); font-weight: 700; }
+    .day b { font-family: var(--display); font-weight: 800; font-size: 18px; }
+    .day i {
+      font-style: normal; font-size: 11px; font-weight: 700; min-width: 20px;
+      border-radius: 999px; padding: 0 6px; background: var(--surface2); color: var(--muted);
+    }
+    .day i.has { background: var(--lime); color: var(--on-lime); }
+    .day:hover { border-color: var(--fg); }
+    .day[aria-pressed=true] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+    .day[aria-pressed=true] small { color: inherit; opacity: .75; }
+    .day.today small::after { content: " \00b7"; }
+
+    /* =========================================================
+       8. DAFTAR TUGAS
+       ========================================================= */
+    .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .bar h2 { font-size: 14px; font-weight: 600; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      cursor: pointer; border: 1px solid var(--line); background: var(--surface);
+      padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 999px;
+    }
+    .chip[aria-pressed=true] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .filters input { flex: 1 1 180px; width: auto; }
+    .filters select { flex: 0 1 180px; width: auto; }
+
+    .grp {
+      margin: 24px 0 8px; display: flex; gap: 10px; align-items: center;
+      font-size: 12px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--muted);
+    }
+    .grp.late { color: var(--hot); }
+    .grp::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+    .task {
+      display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center;
+      padding: 14px 16px; margin-bottom: 8px;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    }
+    .task.done .ttl { text-decoration: line-through; color: var(--muted); }
+    .task.overdue { border-color: var(--hot); }
+    .task.editing { display: block; }
+    .ed { display: grid; gap: 8px; }
+
+    .chk {
+      width: 26px; height: 26px; padding: 0; cursor: pointer; border-radius: 50%;
+      border: 2px solid var(--muted); background: transparent;
+      display: grid; place-items: center; color: var(--on-accent); font-weight: 800; font-size: 14px;
+    }
+    .chk:hover { border-color: var(--accent); }
+    .chk[aria-checked=true] { background: var(--accent); border-color: var(--accent); }
+
+    .ttl { font-weight: 700; overflow-wrap: anywhere; }
+    .meta { font-size: 12.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; align-items: center; }
+    .meta .rel { font-weight: 700; color: var(--accent-text); }
+    .task.overdue .meta .rel { color: var(--hot); }
+
+    .pill {
+      font-size: 11.5px; font-weight: 700; padding: 1px 9px; border-radius: 999px;
+      border: 1px solid currentColor; text-transform: capitalize;
+    }
+    .pill.tinggi { color: var(--hot); }
+    .pill.sedang { color: var(--mid); }
+    .pill.rendah { color: var(--low); }
+
+    .acts { display: flex; gap: 6px; }
+    .acts .ghost { padding: 6px 10px; font-size: 12px; }
+    @media (max-width: 560px) {
+      .task { grid-template-columns: auto minmax(0, 1fr); }
+      .acts { grid-column: 1 / -1; justify-content: flex-end; }
+    }
+
+    .empty { padding: 28px 18px; border: 1px dashed var(--line); border-radius: 14px; color: var(--muted); text-align: center; margin-top: 16px; }
+    .demo { font-size: 12.5px; color: var(--muted); margin: 12px 0 0; }
+
+    /* =========================================================
+       9. BAGIAN BAWAH: CARA KERJA, FITUR, FOOTER
+       ========================================================= */
+    .section { margin-top: 72px; }
+
+    .eyebrow {
+      display: inline-block; margin-bottom: 12px; padding: 4px 12px; border-radius: 999px;
+      background: var(--lime); color: var(--on-lime);
+      font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    }
+    .section-title {
+      font-size: clamp(26px, 4.6vw, 40px); font-weight: 800; letter-spacing: -.025em;
+      line-height: 1.08; max-width: 18ch;
+    }
+    .section-lead { color: var(--muted); margin: 12px 0 28px; max-width: 56ch; font-size: 16px; }
+
+    /* Langkah-langkah */
+    .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; counter-reset: step; }
+    @media (max-width: 760px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+
+    .step {
+      position: relative; overflow: hidden; padding: 26px 24px 24px;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 20px;
+      transition: transform .2s, border-color .2s;
+    }
+    .step:hover { transform: translateY(-4px); border-color: var(--accent); }
+    .step::before {
+      counter-increment: step; content: "0" counter(step);
+      position: absolute; top: 10px; right: 18px;
+      font-family: var(--display); font-weight: 800; font-size: 64px; line-height: 1;
+      color: var(--surface2);
+    }
+    .step .icon {
+      position: relative; width: 48px; height: 48px; border-radius: 14px; margin-bottom: 18px;
+      display: grid; place-items: center; background: var(--accent); color: var(--on-accent);
+    }
+    .step .icon svg { width: 24px; height: 24px; }
+    .step h3 { position: relative; font-size: 19px; font-weight: 800; margin-bottom: 8px; }
+    .step p { position: relative; margin: 0; font-size: 14.5px; color: var(--muted); }
+
+    /* Fitur */
+    .features { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    @media (max-width: 960px) { .features { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 520px) { .features { grid-template-columns: minmax(0, 1fr); } }
+
+    .feature { padding: 20px; background: var(--surface2); border-radius: 18px; }
+    .feature .icon {
+      width: 40px; height: 40px; border-radius: 12px; margin-bottom: 14px;
+      display: grid; place-items: center; background: var(--surface); color: var(--accent-text);
+    }
+    .feature .icon svg { width: 20px; height: 20px; }
+    .feature h3 { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+    .feature p { margin: 0; font-size: 13.5px; color: var(--muted); }
+
+    /* Footer */
+    .site-footer {
+      margin: 72px 0 calc(24px + env(safe-area-inset-bottom, 0px));
+      padding: 36px 32px 24px; border-radius: 28px;
+      background: var(--fg); color: var(--bg);
+    }
+    .footer-top { display: flex; flex-wrap: wrap; gap: 28px 48px; justify-content: space-between; }
+    .footer-brand { max-width: 36ch; }
+    .footer-brand .brand { font-size: 24px; }
+    .footer-brand .logo { background: var(--lime); color: var(--on-lime); }
+    .footer-brand p { margin: 12px 0 0; font-size: 14px; opacity: .75; }
+
+    .footer-col h4 {
+      margin: 0 0 12px; font-family: var(--body); font-size: 12px; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase; opacity: .6;
+    }
+    .tech { display: flex; flex-wrap: wrap; gap: 8px; max-width: 320px; }
+    .tech span {
+      padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 700;
+      border: 1px solid color-mix(in srgb, var(--bg) 35%, transparent);
+    }
+    .footer-bottom {
+      margin-top: 28px; padding-top: 18px; display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: space-between;
+      border-top: 1px solid color-mix(in srgb, var(--bg) 20%, transparent);
+      font-size: 13px; opacity: .75;
+    }
+
+    /* =========================================================
+       10. TOAST
+       ========================================================= */
+    #toasts {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+      padding: 0 max(16px, env(safe-area-inset-left, 0px)) calc(16px + env(safe-area-inset-bottom, 0px));
+      display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none;
+    }
+    .toast {
+      pointer-events: auto; max-width: 420px; width: 100%;
+      display: flex; gap: 12px; justify-content: space-between; align-items: flex-start;
+      padding: 13px 16px; border-radius: 14px; font-weight: 600;
+      background: var(--fg); color: var(--bg);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, .25); animation: toast-in .25s;
+    }
+    .toast.late { background: var(--hot); color: var(--on-hot); }
+    .toast button { background: none; border: 0; cursor: pointer; font-weight: 800; color: inherit; padding: 0 4px; }
+
+    @keyframes toast-in { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+      .toast { animation: none; }
+      .ring .p, .step { transition: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef, Fragment } = React;
+
+    /* =========================================================
+       KONSTANTA
+       ========================================================= */
+    const STORAGE_KEY = 'prodify-planner-v1';
+    const THEME_KEY = 'prodify-theme';
+    const CATEGORIES = ['Kuliah', 'Proyek', 'Organisasi', 'Pribadi'];
+    const PRIORITIES = ['tinggi', 'sedang', 'rendah'];
+    const LEAD_OPTIONS = [
+      [5, '5 menit'],
+      [15, '15 menit'],
+      [30, '30 menit'],
+      [60, '1 jam'],
+      [180, '3 jam'],
+    ];
+    const MINUTE = 60 * 1000;
+    const HOUR = 60 * MINUTE;
+    const DAY = 24 * HOUR;
+
+    /* =========================================================
+       FUNGSI BANTU (UTILS)
+       ========================================================= */
+    const pad = (n) => String(n).padStart(2, '0');
+
+    /** Date -> string "YYYY-MM-DDTHH:mm" untuk input datetime-local */
+    const toLocalInput = (d) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+      `T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+    const formatDate = (d) =>
+      d.toLocaleString('id-ID', {
+        weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+      });
+
+    /** Selisih waktu (ms) -> "dalam 2 j 5 m" atau "terlambat 10 menit" */
+    function relativeTime(ms) {
+      const abs = Math.abs(ms);
+      const minutes = Math.floor(abs / MINUTE);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+
+      let text;
+      if (days >= 1) text = `${days} hari ${hours % 24} j`;
+      else if (hours >= 1) text = `${hours} j ${minutes % 60} m`;
+      else text = `${minutes} menit`;
+
+      return ms >= 0 ? `dalam ${text}` : `terlambat ${text}`;
+    }
+
+    /** Selisih waktu (ms) -> "HH:MM:SS" */
+    function clock(ms) {
+      const total = Math.floor(Math.abs(ms) / 1000);
+      const hours = Math.floor(total / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      const seconds = total % 60;
+      return `${hours ? pad(hours) + ':' : ''}${pad(minutes)}:${pad(seconds)}`;
+    }
+
+    const byDue = (a, b) => new Date(a.due) - new Date(b.due);
+
+    const endOfDay = (timestamp) => {
+      const d = new Date(timestamp);
+      d.setHours(23, 59, 59, 999);
+      return d;
+    };
+
+    const defaultDue = () => {
+      const d = new Date(Date.now() + HOUR);
+      d.setMinutes(0, 0, 0);
+      return toLocalInput(d);
+    };
+
+    const createTask = ({ title, due, prio, cat }) => ({
+      id: uid(), title, due, prio, cat, done: false, soon: false, over: false,
+    });
+
+    /* =========================================================
+       PENYIMPANAN & DATA CONTOH
+       ========================================================= */
+    function createSampleState() {
+      const now = Date.now();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(9, 0, 0, 0);
+
+      const inTwoDays = new Date(now + 2 * DAY);
+      inTwoDays.setHours(23, 0, 0, 0);
+
+      const sample = (title, date, prio, cat) =>
+        createTask({ title, due: toLocalInput(date), prio, cat });
+
+      return {
+        sample: true,
+        lead: 15,
+        tasks: [
+          sample('Kumpulkan laporan praktikum JavaScript', new Date(now + 22 * MINUTE), 'tinggi', 'Kuliah'),
+          sample('Rapikan komponen kartu tugas di React', new Date(now + 4 * HOUR), 'sedang', 'Proyek'),
+          sample('Rapat evaluasi tim Finpro', tomorrow, 'sedang', 'Organisasi'),
+          sample('Baca dokumentasi API notifikasi', inTwoDays, 'rendah', 'Proyek'),
+          sample('Balas pesan dosen pembimbing', new Date(now - 90 * MINUTE), 'tinggi', 'Kuliah'),
+        ],
+      };
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw);
+          if (Array.isArray(saved.tasks)) {
+            return { tasks: saved.tasks, lead: saved.lead || 15, sample: Boolean(saved.sample) };
+          }
+        }
+      } catch (error) { /* abaikan, pakai data contoh */ }
+      return createSampleState();
+    }
+
+    function saveState(state) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (error) { /* abaikan */ }
+    }
+
+    /* =========================================================
+       TEMA TERANG / GELAP
+       ========================================================= */
+    function applySavedTheme() {
+      try {
+        const theme = localStorage.getItem(THEME_KEY);
+        if (theme) document.documentElement.setAttribute('data-theme', theme);
+      } catch (error) { /* abaikan */ }
+    }
+
+    function toggleTheme() {
+      const root = document.documentElement;
+      const prefersLight = matchMedia('(prefers-color-scheme: light)').matches;
+      const current = root.getAttribute('data-theme') || (prefersLight ? 'light' : 'dark');
+      const next = current === 'light' ? 'dark' : 'light';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem(THEME_KEY, next); } catch (error) { /* abaikan */ }
+    }
+
+    applySavedTheme();
+
+    /* =========================================================
+       NOTIFIKASI BROWSER (Notification API)
+       ========================================================= */
+    const notificationSupported = () => 'Notification' in window;
+
+    function sendBrowserNotification(message) {
+      try {
+        if (notificationSupported() && Notification.permission === 'granted') {
+          new Notification('Prodify Planner', { body: message });
+        }
+      } catch (error) { /* abaikan */ }
+    }
+
+    /* =========================================================
+       HOOK
+       ========================================================= */
+    /** Mengembalikan waktu sekarang yang diperbarui setiap `interval` ms */
+    function useNow(interval) {
+      const [now, setNow] = useState(Date.now());
+      useEffect(() => {
+        const timer = setInterval(() => setNow(Date.now()), interval);
+        return () => clearInterval(timer);
+      }, [interval]);
+      return now;
+    }
+
+    /* =========================================================
+       IKON (SVG)
+       ========================================================= */
+    const Icon = ({ children }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+           strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {children}
+      </svg>
+    );
+
+    const icons = {
+      check: <Icon><path d="M5 12.5l4.5 4.5L19 7" /></Icon>,
+      pencil: <Icon><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" /></Icon>,
+      timer: <Icon><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2.5" /><path d="M9 2h6" /></Icon>,
+      bell: <Icon><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 01-3.4 0" /></Icon>,
+      calendar: <Icon><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M16 2v4M8 2v4M3 10h18" /></Icon>,
+      save: <Icon><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></Icon>,
+    };
+
+    /* =========================================================
+       KOMPONEN: HEADER
+       ========================================================= */
+    function Header() {
+      return (
+        <header className="hero">
+          <div className="brand">
+            <span className="logo">{icons.check}</span>
+            Prodify
+            <span className="tag">Planner otomatis</span>
+            <button className="theme" type="button" onClick={toggleTheme}
+                    aria-label="Ganti tema terang atau gelap">
+              Ganti tema
+            </button>
+          </div>
+
+          <h1>Atur harimu, biar <em>pengingat</em> yang kerja.</h1>
+          <p>
+            Catat tugas dan tenggat. Prodify menghitung mundur dan membunyikan
+            pengingat sebelum waktunya habis.
+          </p>
+        </header>
+      );
+    }
+
+    /* =========================================================
+       KOMPONEN: KARTU TENGGAT BERIKUTNYA
+       ========================================================= */
+    function NextDeadline({ tasks, now }) {
+      const active = tasks.filter((t) => !t.done).sort(byDue);
+      const upcoming = active.find((t) => new Date(t.due) >= now);
+      const overdue = active.filter((t) => new Date(t.due) < now);
+
+      let className = 'strip';
+      let label, title, countdown;
+
+      if (upcoming) {
+        label = 'Tenggat berikutnya';
+        title = upcoming.title;
+        countdown = clock(new Date(upcoming.due) - now);
+      } else if (overdue.length) {
+        className += ' late';
+        label = 'Perlu ditangani';
+        title = `${overdue.length} tugas terlambat`;
+        countdown = '-' + clock(now - new Date(overdue[0].due));
+      } else {
+        label = 'Semua beres';
+        title = 'Tidak ada tugas aktif';
+        countdown = '--:--';
+      }
+
+      return (
+        <div className={className} role="status" aria-live="polite">
+          <div>
+            <div className="lbl">{label}</div>
+            <div className="big">{title}</div>
+          </div>
+          <div className="cd">{countdown}</div>
+        </div>
+      );
+    }
+
+    /* =========================================================
+       KOMPONEN: FORM TUGAS BARU
+       ========================================================= */
+    function TaskForm({ onAdd }) {
+      const [title, setTitle] = useState('');
+      const [due, setDue] = useState(defaultDue());
+      const [prio, setPrio] = useState('sedang');
+      const [cat, setCat] = useState(CATEGORIES[0]);
+
+      function handleSubmit(event) {
+        event.preventDefault();
+        if (!title.trim() || !due) return;
+
+        onAdd(createTask({ title: title.trim(), due, prio, cat }));
+        setTitle('');
+        setDue(defaultDue());
+      }
+
+      return (
+        <section className="panel" aria-labelledby="hAdd">
+          <h2 id="hAdd">Tugas baru</h2>
+
+          <form onSubmit={handleSubmit} autoComplete="off">
+            <label htmlFor="fTitle">Nama tugas</label>
+            <input type="text" id="fTitle" value={title} maxLength={120} required
+                   placeholder="Mis. Kumpulkan laporan akhir"
+                   onChange={(e) => setTitle(e.target.value)} />
+
+            <label htmlFor="fDue">Tenggat</label>
+            <input type="datetime-local" id="fDue" value={due} required
+                   onChange={(e) => setDue(e.target.value)} />
+
+            <div className="row2">
+              <div>
+                <label htmlFor="fPrio">Prioritas</label>
+                <select id="fPrio" value={prio} onChange={(e) => setPrio(e.target.value)}>
+                  {PRIORITIES.map((p) => (
+                    <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="fCat">Kategori</label>
+                <select id="fCat" value={cat} onChange={(e) => setCat(e.target.value)}>
+                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <button className="btn" type="submit">TAMBAH KE PLANNER</button>
+          </form>
+        </section>
+      );
+    }
+
+    /* =========================================================
+       KOMPONEN: PROGRES
+       ========================================================= */
+    function Progress({ tasks, now }) {
+      const total = tasks.length;
+      const done = tasks.filter((t) => t.done).length;
+      const late = tasks.filter((t) => !t.done && new Date(t.due) < now).length;
+      const percent = total ? done / total : 0;
+      const CIRCUMFERENCE = 314.16; // 2 * PI * r (r = 50)
+
+      return (
+        <section className="panel" aria-labelledby="hProg">
+          <h2 id="hProg">Progres</h2>
+
+          <div className="stats">
+            <div className="ring">
+              <svg viewBox="0 0 120 120" aria-hidden="true">
+                <circle className="t" cx="60" cy="60" r="50" />
+                <circle className="p" cx="60" cy="60" r="50"
+                        strokeDasharray={CIRCUMFERENCE}
+                        strokeDashoffset={CIRCUMFERENCE * (1 - percent)} />
+              </svg>
+              <b>{Math.round(percent * 100)}%</b>
+            </div>
+
+            <div className="nums">
+              <div><span>Total</span><strong>{total}</strong></div>
+              <div><span>Selesai</span><strong>{done}</strong></div>
+              <div className="late"><span>Terlambat</span><strong>{late}</strong></div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* =========================================================
+       KOMPONEN: PENGATURAN PENGINGAT
+       ========================================================= */
+    function ReminderSettings({ lead, onLead, onCopy, permission, onEnableNotif }) {
+      return (
+        <section className="panel" aria-labelledby="hRem">
+          <h2 id="hRem">Pengingat otomatis</h2>
+
+          <label htmlFor="fLead">Ingatkan sebelum tenggat</label>
+          <select id="fLead" value={lead} onChange={(e) => onLead(Number(e.target.value))}>
+            {LEAD_OPTIONS.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
+          </select>
+
+          <p className="hint">
+            Semua tugas diperiksa tiap 5 detik selama halaman terbuka. Pengingat muncul
+            saat tenggat mendekat atau terlewat.
+          </p>
+
+          {permission !== 'unsupported' && (
+            <button className="ghost full" type="button"
+                    disabled={permission === 'granted'} onClick={onEnableNotif}>
+              {permission === 'granted'
+                ? 'Notifikasi browser aktif'
+                : permission === 'denied'
+                  ? 'Notifikasi diblokir di browser'
+                  : 'Aktifkan notifikasi browser'}
+            </button>
+          )}
+
+          <button className="ghost full" type="button" onClick={onCopy}>Salin agenda hari ini</button>
+        </section>
+      );
+    }
+
+    /* =========================================================
+       KOMPONEN: KALENDER 7 HARI
+       ========================================================= */
+    function WeekStrip({ tasks, now, selectedDay, onSelect }) {
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date(now + i * DAY);
+        return { date, key: toLocalInput(date).slice(0, 10) };
+      });
+
+      return (
+        <div className="week" role="group" aria-label="Kalender 7 hari">
+          {days.map(({ date, key }, index) => {
+            const count = tasks.filter((t) => !t.done && t.due.slice(0, 10) === key).length;
+            const fullLabel = date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+
+            return (
+              <button key={key} type="button"
+                      className={'day' + (index === 0 ? ' today' : '')}
+                      aria-pressed={selectedDay === key}
+                      aria-label={`${fullLabel}, ${count} tugas aktif`}
+                      onClick={() => onSelect(selectedDay === key ? null : key)}>
+                <small>{date.toLocaleDateString('id-ID', { weekday: 'short' })}</small>
+                <b>{date.getDate()}</b>
+                <i className={count ? 'has' : ''}>{count}</i>
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    /* =========================================================
+       KOMPONEN: SATU KARTU TUGAS
+       ========================================================= */
+    function TaskItem({ task, now, actions }) {
+      const [editing, setEditing] = useState(false);
+      const [title, setTitle] = useState(task.title);
+      const [due, setDue] = useState(task.due);
+
+      const dueDate = new Date(task.due);
+      const diff = dueDate - now;
+      const overdue = !task.done && diff < 0;
+
+      function startEdit() {
+        setTitle(task.title);
+        setDue(task.due);
+        setEditing(true);
+      }
+
+      function saveEdit() {
+        if (!title.trim() || !due) return;
+        actions.save(task.id, { title: title.trim(), due, soon: false, over: false });
+        setEditing(false);
+      }
+
+      if (editing) {
+        return (
+          <article className="task editing">
+            <div className="ed">
+              <input type="text" value={title} maxLength={120} aria-label="Nama tugas"
+                     onChange={(e) => setTitle(e.target.value)} />
+              <input type="datetime-local" value={due} aria-label="Tenggat"
+                     onChange={(e) => setDue(e.target.value)} />
+              <div className="acts">
+                <button className="ghost on" type="button" onClick={saveEdit}>Simpan</button>
+                <button className="ghost" type="button" onClick={() => setEditing(false)}>Batal</button>
+              </div>
+            </div>
+          </article>
+        );
+      }
+
+      const className = 'task' + (task.done ? ' done' : '') + (overdue ? ' overdue' : '');
+
+      return (
+        <article className={className}>
+          <button className="chk" type="button" role="checkbox"
+                  aria-checked={task.done} aria-label={`Tandai selesai: ${task.title}`}
+                  onClick={() => actions.toggle(task.id)}>
+            {task.done ? '✓' : null}
+          </button>
+
+          <div style={{ minWidth: 0 }}>
+            <div className="ttl">{task.title}</div>
+            <div className="meta">
+              <span>{formatDate(dueDate)}</span>
+              <span>{task.cat}</span>
+              <span className={'pill ' + task.prio}>{task.prio}</span>
+              {!task.done && <span className="rel">{relativeTime(diff)}</span>}
+            </div>
+          </div>
+
+          <div className="acts">
+            {!task.done && (
+              <button className="ghost" type="button" title="Tunda satu jam"
+                      onClick={() => actions.snooze(task.id)}>+1 j</button>
+            )}
+            <button className="ghost" type="button" onClick={startEdit}>Ubah</button>
+            <button className="ghost" type="button" aria-label={`Hapus ${task.title}`}
+                    onClick={() => actions.remove(task.id)}>Hapus</button>
+          </div>
+        </article>
+      );
+    }
+
+    /* =========================================================
+       KOMPONEN: DAFTAR TUGAS (filter, pencarian, grup)
+       ========================================================= */
+    const STATUS_FILTERS = [['all', 'Semua'], ['active', 'Aktif'], ['done', 'Selesai']];
+    const GROUPS = [['late', 'Terlambat'], ['today', 'Hari ini'], ['next', 'Mendatang'], ['done', 'Selesai']];
+
+    function TaskList({ tasks, now, actions, showSampleNote }) {
+      const [status, setStatus] = useState('all');
+      const [category, setCategory] = useState('all');
+      const [query, setQuery] = useState('');
+      const [selectedDay, setSelectedDay] = useState(null);
+
+      const filtered = tasks
+        .filter((t) => {
+          if (status === 'active' && t.done) return false;
+          if (status === 'done' && !t.done) return false;
+          if (category !== 'all' && t.cat !== category) return false;
+          if (selectedDay && t.due.slice(0, 10) !== selectedDay) return false;
+          if (query && !t.title.toLowerCase().includes(query.toLowerCase())) return false;
+          return true;
+        })
+        .sort(byDue);
+
+      const eod = endOfDay(now);
+      const grouped = { late: [], today: [], next: [], done: [] };
+      filtered.forEach((t) => {
+        const due = new Date(t.due);
+        if (t.done) grouped.done.push(t);
+        else if (due < now) grouped.late.push(t);
+        else if (due <= eod) grouped.today.push(t);
+        else grouped.next.push(t);
+      });
+      const visibleGroups = GROUPS.filter(([key]) => grouped[key].length);
+
+      return (
+        <section aria-labelledby="hList">
+          <WeekStrip tasks={tasks} now={now} selectedDay={selectedDay} onSelect={setSelectedDay} />
+
+          <div className="bar">
+            <h2 id="hList">{selectedDay ? 'Tugas pada tanggal terpilih' : 'Daftar tugas'}</h2>
+            <div className="chips" role="group" aria-label="Filter status">
+              {STATUS_FILTERS.map(([value, text]) => (
+                <button key={value} type="button" className="chip"
+                        aria-pressed={status === value} onClick={() => setStatus(value)}>
+                  {text}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="filters">
+            <input type="search" value={query} placeholder="Cari tugas..." aria-label="Cari tugas"
+                   onChange={(e) => setQuery(e.target.value)} />
+            <select value={category} aria-label="Filter kategori" onChange={(e) => setCategory(e.target.value)}>
+              <option value="all">Semua kategori</option>
+              {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+
+          {showSampleNote && (
+            <p className="demo">
+              Tugas di bawah ini contoh. Hapus atau ubah sesuka Anda, lalu tambahkan tugas sendiri.
+            </p>
+          )}
+
+          {visibleGroups.length ? (
+            visibleGroups.map(([key, label]) => (
+              <div key={key}>
+                <div className={'grp' + (key === 'late' ? ' late' : '')}>
+                  {label} ({grouped[key].length})
+                </div>
+                {grouped[key].map((task) => (
+                  <TaskItem key={task.id} task={task} now={now} actions={actions} />
+                ))}
+              </div>
+            ))
+          ) : (
+            <div className="empty">Tidak ada tugas yang cocok dengan tampilan ini.</div>
+          )}
+        </section>
+      );
+    }
+
+    /* =========================================================
+       KOMPONEN: CARA KERJA
+       ========================================================= */
+    const STEPS = [
+      {
+        icon: icons.pencil,
+        title: 'Catat',
+        text: 'Tulis tugas, pilih tenggat, prioritas, dan kategori. Tugas langsung tersusun menurut waktu.',
+      },
+      {
+        icon: icons.timer,
+        title: 'Pantau',
+        text: 'Kartu di atas menghitung mundur ke tenggat berikutnya, dan kalender 7 hari menunjukkan beban tiap hari.',
+      },
+      {
+        icon: icons.bell,
+        title: 'Diingatkan',
+        text: 'Pilih berapa lama sebelum tenggat kamu ingin diingatkan. Pengingat muncul otomatis, tanpa dicek manual.',
+      },
+    ];
+
+    function HowItWorks() {
+      return (
+        <section className="section" aria-labelledby="hHow">
+          <span className="eyebrow">Cara kerja</span>
+          <h2 className="section-title" id="hHow">Tiga langkah, tanpa ribet.</h2>
+          <p className="section-lead">
+            Semua dilakukan di satu halaman. Tidak perlu daftar akun dan tidak perlu pasang apa pun.
+          </p>
+
+          <div className="steps">
+            {STEPS.map((step) => (
+              <article className="step" key={step.title}>
+                <div className="icon">{step.icon}</div>
+                <h3>{step.title}</h3>
+                <p>{step.text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      );
+    }
+
+    /* =========================================================
+       KOMPONEN: FITUR
+       ========================================================= */
+    const FEATURES = [
+      { icon: icons.timer, title: 'Hitung mundur', text: 'Waktu menuju tenggat berjalan real-time setiap detik.' },
+      { icon: icons.calendar, title: 'Kalender 7 hari', text: 'Lihat jumlah tugas aktif tiap hari, klik untuk memfilter.' },
+      { icon: icons.bell, title: 'Pengingat pintar', text: 'Toast di halaman plus notifikasi browser saat tenggat dekat.' },
+      { icon: icons.save, title: 'Tersimpan otomatis', text: 'Data disimpan di browser, jadi tidak hilang saat halaman ditutup.' },
+    ];
+
+    function Features() {
+      return (
+        <section className="section" aria-labelledby="hFeat">
+          <span className="eyebrow">Fitur</span>
+          <h2 className="section-title" id="hFeat">Semua yang kamu butuhkan.</h2>
+          <p className="section-lead">Sederhana, cepat, dan fokus pada satu hal: tenggat tidak terlewat.</p>
+
+          <div className="features">
+            {FEATURES.map((feature) => (
+              <article className="feature" key={feature.title}>
+                <div className="icon">{feature.icon}</div>
+                <h3>{feature.title}</h3>
+                <p>{feature.text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      );
+    }
+
+    /* =========================================================
+       KOMPONEN: FOOTER
+       ========================================================= */
+    const TECH_STACK = ['HTML', 'CSS', 'React', 'JavaScript', 'Notification API'];
+
+    function Footer() {
+      return (
+        <footer className="site-footer">
+          <div className="footer-top">
+            <div className="footer-brand">
+              <div className="brand">
+                <span className="logo">{icons.check}</span>
+                Prodify
+              </div>
+              <p>Planner produktivitas otomatis agar kamu tidak pernah melewatkan tenggat.</p>
+            </div>
+
+            <div className="footer-col">
+              <h4>Dibangun dengan</h4>
+              <div className="tech">
+                {TECH_STACK.map((tech) => <span key={tech}>{tech}</span>)}
+              </div>
+            </div>
+          </div>
+
+          <div className="footer-bottom">
+            <span>Dibuat oleh Alvia Setyani Putri</span>
+            <span>EXERCISE 2026 · Software Path</span>
+          </div>
+        </footer>
+      );
+    }
+
+    /* =========================================================
+       KOMPONEN: TOAST
+       ========================================================= */
+    function Toasts({ toasts, onClose }) {
+      return (
+        <div id="toasts" aria-live="assertive">
+          {toasts.map((toast) => (
+            <div key={toast.id} className={'toast' + (toast.late ? ' late' : '')}>
+              <span>{toast.msg}</span>
+              <button type="button" aria-label="Tutup" onClick={() => onClose(toast.id)}>✕</button>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    /* =========================================================
+       KOMPONEN UTAMA
+       ========================================================= */
+    function App() {
+      const initial = useMemo(loadState, []);
+      const [tasks, setTasks] = useState(initial.tasks);
+      const [lead, setLead] = useState(initial.lead);
+      const [sample] = useState(initial.sample);
+      const [toasts, setToasts] = useState([]);
+      const [permission, setPermission] = useState(
+        notificationSupported() ? Notification.permission : 'unsupported'
+      );
+      const now = useNow(1000);
+
+      /* Simpan otomatis setiap ada perubahan */
+      useEffect(() => saveState({ tasks, lead, sample }), [tasks, lead, sample]);
+
+      /* ---------- Toast ---------- */
+      function pushToast(msg, late = false) {
+        const id = uid();
+        setToasts((list) => [...list, { id, msg, late }]);
+        setTimeout(() => closeToast(id), 12000);
+      }
+      const closeToast = (id) => setToasts((list) => list.filter((t) => t.id !== id));
+
+      /* ---------- Pemeriksa pengingat (tiap 5 detik) ---------- */
+      const latest = useRef();
+      latest.current = { tasks, lead };
+
+      useEffect(() => {
+        function checkReminders() {
+          const { tasks: current, lead: leadMinutes } = latest.current;
+          const nowMs = Date.now();
+          const updates = {};
+
+          current.forEach((task) => {
+            if (task.done) return;
+            const diff = new Date(task.due) - nowMs;
+
+            if (diff < 0 && !task.over) {
+              updates[task.id] = { over: true, soon: true };
+              pushToast(`Terlewat: ${task.title}`, true);
+              sendBrowserNotification(`Terlewat: ${task.title}`);
+            } else if (diff >= 0 && diff <= leadMinutes * MINUTE && !task.soon) {
+              updates[task.id] = { soon: true };
+              pushToast(`Segera (${relativeTime(diff)}): ${task.title}`);
+              sendBrowserNotification(`Segera (${relativeTime(diff)}): ${task.title}`);
+            }
+          });
+
+          if (Object.keys(updates).length) {
+            setTasks((prev) => prev.map((t) => (updates[t.id] ? { ...t, ...updates[t.id] } : t)));
+          }
+        }
+
+        const firstRun = setTimeout(checkReminders, 800);
+        const interval = setInterval(checkReminders, 5000);
+        return () => { clearTimeout(firstRun); clearInterval(interval); };
+      }, []);
+
+      /* ---------- Aksi pada tugas ---------- */
+      const updateTask = (id, patch) =>
+        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+
+      const actions = {
+        toggle: (id) => setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))),
+
+        snooze: (id) => {
+          setTasks((prev) => prev.map((t) => {
+            if (t.id !== id) return t;
+            const base = Math.max(Date.now(), new Date(t.due).getTime());
+            return { ...t, due: toLocalInput(new Date(base + HOUR)), soon: false, over: false };
+          }));
+          pushToast('Ditunda satu jam.');
+        },
+
+        remove: (id) => setTasks((prev) => prev.filter((t) => t.id !== id)),
+
+        save: (id, patch) => {
+          updateTask(id, patch);
+          pushToast('Perubahan disimpan.');
+        },
+      };
+
+      function addTask(task) {
+        setTasks((prev) => [...prev, task]);
+        pushToast('Tugas ditambahkan ke planner.');
+      }
+
+      /* ---------- Pengaturan pengingat ---------- */
+      function changeLead(minutes) {
+        setLead(minutes);
+        // Tugas yang belum terlewat boleh diingatkan lagi dengan jeda yang baru
+        setTasks((prev) => prev.map((t) => (t.over ? t : { ...t, soon: false })));
+      }
+
+      function enableBrowserNotifications() {
+        Notification.requestPermission().then((result) => {
+          setPermission(result);
+          if (result === 'granted') pushToast('Notifikasi browser diaktifkan.');
+        });
+      }
+
+      /* ---------- Salin agenda hari ini ---------- */
+      function copyAgenda() {
+        const eod = endOfDay(now);
+        const todayDate = new Date(now).toLocaleDateString('id-ID', {
+          weekday: 'long', day: 'numeric', month: 'long',
+        });
+
+        const rows = tasks
+          .filter((t) => !t.done && new Date(t.due) <= eod)
+          .sort(byDue)
+          .map((t) => {
+            const time = new Date(t.due).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            return `- ${time} ${t.title} [${t.cat}]`;
+          });
+
+        const text = `Agenda ${todayDate}\n` + (rows.length ? rows.join('\n') : 'Tidak ada tugas aktif hari ini.');
+        const onFail = () => pushToast('Salin otomatis diblokir. Salin agenda secara manual.');
+
+        try {
+          navigator.clipboard.writeText(text).then(() => pushToast('Agenda hari ini disalin.'), onFail);
+        } catch (error) {
+          onFail();
+        }
+      }
+
+      /* ---------- Tampilan ---------- */
+      return (
+        <Fragment>
+          <Header />
+
+          <div className="wrap">
+            <NextDeadline tasks={tasks} now={now} />
+
+            <div className="grid">
+              <div className="stack">
+                <TaskForm onAdd={addTask} />
+                <Progress tasks={tasks} now={now} />
+                <ReminderSettings lead={lead} onLead={changeLead} onCopy={copyAgenda}
+                                  permission={permission} onEnableNotif={enableBrowserNotifications} />
+              </div>
+
+              <TaskList tasks={tasks} now={now} actions={actions} showSampleNote={sample} />
+            </div>
+
+            <HowItWorks />
+            <Features />
+            <Footer />
+          </div>
+
+          <Toasts toasts={toasts} onClose={closeToast} />
+        </Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
